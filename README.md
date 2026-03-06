@@ -14,11 +14,15 @@
 
 ## 简介
 
-**Easy OpenClaw** 是一套围绕 [OpenClaw](https://github.com/openclaw/openclaw) 开源项目构建的私有化部署工具链。
+**Easy OpenClaw** 是一套基于 [OpenClaw](https://github.com/openclaw/openclaw) 开源项目构建的**多租户私有化部署平台**。
 
-- **openclaw**：基于官方开源版本修改并自托管的 AI Agent 核心服务，提供 Gateway WebSocket 服务和 AI 任务调度能力。
-- **openclaw-exec**：运行在终端设备上的跨平台桌面节点（Tauri 2 + React），负责接收并执行云端下发的自动化任务。
-- **openclaw-tenant**：私有化授权管理后台（Hono + Svelte 5），负责许可证颁发、HWID 设备绑定和 Docker 实例自动编排。
+官方 OpenClaw 仅支持单用户自托管（一台机器跑一个实例），Easy OpenClaw 则在其之上构建了一套完整的控制平面，实现「**一套服务端，N 个用户各自独享一个隔离的 OpenClaw 实例**」的多租户模式。
+
+| 组件 | 定位 | 说明 |
+|------|------|---------|
+| **openclaw** | 数据平面 · 租户实例 | 官方开源自托管版，每个用户独享一个 Docker 容器 |
+| **openclaw-exec** | 客户端 · 桌面节点 | Tauri 2 + React 桌面应用，连接用户专属的 openclaw 实例 |
+| **openclaw-tenant** | 控制平面 · 管理后台 | Hono + Svelte 5，负责 License 管理、Docker 编排与授权鉴权 |
 
 ---
 
@@ -33,16 +37,60 @@ easy-openclaw/
 
 ---
 
-## 🏗️ 整体架构
+## 🏗️ 架构概览
 
-三个组件分为**服务端**与**客户端**两侧，通过 HTTP REST 和 WebSocket 长连接协作。
+### 部署架构（多租户）
+
+每个用户（License）对应一个独立的 openclaw Docker 容器和一个 exec 桌面客户端，彼此完全隔离。openclaw-tenant 作为统一控制平面，管理所有实例的生命周期。
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         服务端（自托管）                               │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                   openclaw-tenant（控制平面）                  │   │
+│  │   ┌──────────────┐    ┌──────────────┐    ┌─────────────┐  │   │
+│  │   │  Hono API    │    │  Svelte 管理  │    │  SQLite DB  │  │   │
+│  │   │  :3000       │    │  UI (admin)  │    │  licenses   │  │   │
+│  │   └──────────────┘    └──────────────┘    └─────────────┘  │   │
+│  └─────┬──────────────────────────────────────────────────────┘   │
+│        │ 创建 License → provision-docker.sh / provision-podman.sh  │
+│        │ 每个 License 独立一个容器，端口隔离                          │
+│        ↓                                                           │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐           │
+│  │  openclaw   │    │  openclaw   │    │  openclaw   │           │
+│  │  Gateway A  │    │  Gateway B  │    │  Gateway C  │    ...    │
+│  │  :18800     │    │  :18801     │    │  :18802     │           │
+│  │  (Docker)   │    │  (Docker)   │    │  (Docker)   │           │
+│  └──────▲──────┘    └──────▲──────┘    └──────▲──────┘           │
+│         │ WebSocket         │ WebSocket         │ WebSocket        │
+└─────────┼───────────────────┼───────────────────┼─────────────────┘
+          │                   │                   │
+   ┌──────┴──────┐     ┌──────┴──────┐     ┌──────┴──────┐
+   │ openclaw-   │     │ openclaw-   │     │ openclaw-   │
+   │ exec 用户A  │     │ exec 用户B  │     │ exec 用户C  │
+   │ 桌面客户端   │     │ 桌面客户端   │     │ 桌面客户端   │
+   └─────────────┘     └─────────────┘     └─────────────┘
+         ↑                    ↑                    ↑
+         └────────────────────┴────────────────────┘
+              首次激活时 POST /api/verify → tenant
+              返回专属 gatewayUrl + authToken
+```
+
+> **1 个 License = 1 个 Docker 容器 = 1 个 exec 客户端**，三者一一对应，互相隔离。
+
+---
+
+### 服务架构（单租户内部）
+
+以单个用户为视角，三个组件的内部交互关系：
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                            服务端 / 管理侧 (Self-Hosted)                     ║
 ║                                                                              ║
 ║  ┌────────────────────────┐       ┌──────────────────────────────────────┐  ║
-║  │    openclaw-tenant     │       │     openclaw（自托管核心服务）          │  ║
+║  │    openclaw-tenant     │       │  openclaw（用户专属 Docker 实例）       │  ║
 ║  │                        │       │                                      │  ║
 ║  │  [Svelte 5 Admin UI]   │ 创建  │  ┌─────────────┐  ┌──────────────┐  │  ║
 ║  │  [Hono REST API]       │──────►│  │   Gateway   │  │  AI Agent    │  │  ║
@@ -55,14 +103,13 @@ easy-openclaw/
 ╚═════════════╪═════════════════════════════╪══════════════════════════════╝
               │                             │
               │                             │ ② wss:// 长连接
-              │                             │   握手帧 (role=node)
+              │                             │   connect 握手帧 (role=node)
               ▼                             ▼
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                           客户端设备 / 终端侧 (Client)                        ║
 ║                                                                              ║
 ║  ┌───────────────────────────────────────────────────────────────────────┐  ║
 ║  │                      openclaw-exec（桌面节点）                          │  ║
-║  │                                                                       │  ║
 ║  │  ┌─────────────────────────────────────────────┐                     │  ║
 ║  │  │           React UI（系统托盘 / 任务监控面板）   │                     │  ║
 ║  │  └───────────────────┬─────────────────────────┘                     │  ║
@@ -94,13 +141,14 @@ easy-openclaw/
 ```
 管理员（Svelte UI）
   → POST /api/auth/login               # JWT 认证
-  → POST /api/licenses                 # 创建许可证（可选 ownerTag / 到期日 / HWID）
+  → POST /api/licenses                 # 创建许可证（可选 ownerTag / expiryDate / tokenTtlDays / hostIp / baseDomain）
       ↓
   [Tenant 后台 Worker 异步执行]
+      ├── 从 settings 读取全局默认并写入 license 快照（runtime_provider/runtime_dir/data_dir）
       ├── 分配 gateway_port / bridge_port
-      ├── 执行 Docker Compose up，拉起一个独立的 openclaw 实例
+      ├── 按 license 快照执行 docker/podman provision 脚本，拉起独立 openclaw 实例
       ├── 读取实例生成的 openclaw.json（含 gateway.auth.token）
-      ├── [可选] 写入 Nginx 配置并刷新反向代理
+      ├── [可选] 若 license.nginx_host 存在，写入 Nginx 配置并刷新反向代理
       └── 更新 provision_status: pending → running → ready
 ```
 
@@ -253,11 +301,19 @@ openclaw-tenant 关键环境变量（参见 `.env.example`）：
 |------|------|
 | `JWT_SECRET` | JWT 签名密钥，生产环境必须设置强密钥 |
 | `ADMIN_USER` / `ADMIN_PASS` | 管理员账号（默认 `admin` / `admin123`，**生产请务必修改**） |
-| `OPENCLAW_HOST_IP` | 宿主机 IP，用于生成节点接入地址 |
-| `OPENCLAW_RUNTIME_DIR` | openclaw 实例运行目录 |
-| `OPENCLAW_DATA_DIR` | openclaw 数据持久化目录 |
-| `OPENCLAW_GATEWAY_PORT_START/END` | Gateway 端口分配范围 |
-| `OPENCLAW_BASE_DOMAIN` | （可选）启用域名模式，自动配置 Nginx 反代 |
+| `OPENCLAW_HOST_IP` | settings 的默认 host_ip（仅首次初始化 settings 时使用） |
+| `OPENCLAW_RUNTIME_DIR` | settings 的默认 runtime_dir（仅首次初始化 settings 时使用） |
+| `OPENCLAW_DATA_DIR` | settings 的默认 data_dir（仅首次初始化 settings 时使用） |
+| `OPENCLAW_GATEWAY_PORT_START/END` | settings 的默认 Gateway 端口范围（仅首次初始化 settings 时使用） |
+| `OPENCLAW_BASE_DOMAIN` | settings 的默认 base_domain（仅首次初始化 settings 时使用） |
+| `NGINX_SITE_DIR` / `NGINX_RELOAD_CMD` | 域名模式下 Nginx 配置写入与重载命令 |
+
+### Settings 与 License 快照策略
+
+1. `settings`：全局默认模板（可在 UI `Settings` 页面修改）。
+2. `license`：创建时固化一份“生效快照”（`runtime_provider/runtime_dir/data_dir/nginx_host` 等）。
+3. 域名优先级：`POST /api/licenses` 的 `baseDomain` > `settings.base_domain` > 空（IP:端口模式）。
+4. provisioning 运行时以 license 行内值为准，避免后续改全局设置影响已发 license。
 
 ---
 
@@ -268,6 +324,59 @@ openclaw-tenant 关键环境变量（参见 `.env.example`）：
 - [许可证编排引擎](./openclaw-tenant/docs/LICENSE_PROVISIONING.md)
 - [UI 设计规范](./openclaw-tenant/docs/UI_DESIGN.md)
 - [环境变量说明](./openclaw-tenant/docs/ENVIRONMENT.md)
+
+---
+
+## 🔧 Git Submodule 工作流
+
+本仓库是 **superproject + submodule** 结构：
+
+- `openclaw/`
+- `openclaw-exec/`
+- `openclaw-tenant/`
+
+### 1. 首次拉取
+
+```bash
+git clone --recurse-submodules <easy-openclaw-repo-url>
+```
+
+如果已经 clone 过根仓库，再执行：
+
+```bash
+git submodule update --init --recursive
+```
+
+### 2. 修改子模块后的提交流程（必须按顺序）
+
+示例：你修改了 `openclaw-exec/`
+
+```bash
+# Step 1: 在子模块内提交并推送代码
+cd openclaw-exec
+git add .
+git commit -m "feat: your change"
+git push origin <your-branch>
+
+# Step 2: 回到根仓库，提交“子模块指针”更新
+cd ..
+git add openclaw-exec
+git commit -m "chore: bump openclaw-exec submodule"
+git push origin main
+```
+
+### 3. 重要注意事项
+
+1. 先推送子模块，再推送根仓库。否则别人拉根仓库时可能找不到对应子模块 commit。
+2. 根仓库提交的是子模块 commit SHA（指针），不是子模块源码。
+3. 只有修改了子模块 URL 或路径时，才需要提交 `.gitmodules`。
+
+### 4. 更新到最新子模块内容
+
+```bash
+git pull
+git submodule update --init --recursive
+```
 
 ---
 
