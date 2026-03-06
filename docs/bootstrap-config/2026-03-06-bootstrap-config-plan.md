@@ -1,5 +1,14 @@
 # Bootstrap Config Implementation Plan
 
+> [!WARNING]
+> **Deprecation Notice (2026-03-07)**
+> 本文档中的 `authToken` 相关设计已废弃。变更摘要：
+> - `auth_token` 字段已从 `licenses` 表中移除
+> - Token 轮换统一使用 `gateway_token`（在 verify 时自动轮换）
+> - `bootstrap-config` 接口认证方式从 `authToken` 改为 `licenseKey + hwid`
+> - 以下代码示例中的 `authToken` 引用仅作为历史记录保留，**不再反映当前实现**
+> - 最新实现请参考：`packages/api/src/routes/verify.ts` 和 `packages/api/src/routes/bootstrap-config.ts`
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** provision 预设最小可运行配置（GLM-4-Flash + tools.exec.host=node + 飞书插件），exec 首次向导补齐飞书 appId/appSecret，自动下发容器热重载，实现开箱即用体验。

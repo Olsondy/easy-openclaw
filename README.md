@@ -75,7 +75,7 @@ Each user (License) maps to one isolated openclaw container and one exec desktop
          ↑                    ↑                    ↑
          └────────────────────┴────────────────────┘
               On first activation: POST /api/verify → tenant
-              Returns dedicated gatewayUrl + authToken
+              Returns dedicated gatewayUrl + gatewayToken
 ```
 
 > **1 License = 1 Container = 1 exec client** — fully isolated, one-to-one mapping.
@@ -164,7 +164,7 @@ openclaw-exec starts, user enters licenseKey
       ✓ First call: bind HWID, activate license
       ↓
   Returns nodeConfig + needsBootstrap:
-      { gatewayUrl, gatewayToken, agentId, authToken, licenseId, tenantUrl }
+      { gatewayUrl, gatewayToken, agentId, licenseId, tenantUrl }
       { needsBootstrap: { feishu: true/false } }
       ↓
   exec stores nodeConfig in memory (not persisted)
@@ -175,7 +175,7 @@ openclaw-exec starts, user enters licenseKey
 
 ```
 [Rust ws_client]
-  → Read config.json (gatewayUrl + authToken)
+  → Read config.json (gatewayUrl + gatewayToken)
   → Open wss:// persistent connection to dedicated openclaw Gateway
   → Send connect frame:
       { role: "node", scopes: ["node.execute"], device: { publicKey, signature } }
@@ -205,7 +205,7 @@ exec detects needsBootstrap.feishu = true
       ↓
   User submits
   → POST {tenantUrl}/api/licenses/{licenseId}/bootstrap-config
-      { authToken, feishu: { appId, appSecret } }
+      { licenseKey, hwid, feishu: { appId, appSecret } }
       ↓
   Tenant writes to openclaw.json in container config dir:
       channels.feishu.appId / channels.feishu.appSecret
@@ -219,12 +219,12 @@ exec detects needsBootstrap.feishu = true
   exec Settings page always shows "飞书配置" entry for reconfiguration
 ```
 
-### ⑥ authToken Auto-Rotation
+### ⑥ gatewayToken Auto-Rotation
 
 ```
 After token expires (> token_ttl_days), on next POST /api/verify:
-  → Tenant generates new authToken
-  → Updates DB auth_token / token_expires_at
+  → Tenant generates new gatewayToken
+  → Updates DB gateway_token / token_expires_at
   → Syncs new token to openclaw.json of the instance
   (Transparent to the user — no manual intervention required)
 ```
@@ -252,7 +252,7 @@ After token expires (> token_ttl_days), on next POST /api/verify:
 - **Bootstrap config API**: exec wizard submits Feishu credentials via `POST /api/licenses/:id/bootstrap-config`; written to container config and hot-reloaded
 - **Runtime auto-detection**: detects Docker or Podman via socket file at startup
 - **Settings UI**: runtime provider, port ranges, base domain configurable via admin UI
-- **Multi-tenant token cache**: per-license authToken with automatic rotation
+- **Multi-tenant token rotation**: per-license gatewayToken with automatic rotation
 
 ---
 

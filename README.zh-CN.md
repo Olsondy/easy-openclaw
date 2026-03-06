@@ -74,7 +74,7 @@ easy-openclaw/
          ↑                    ↑                    ↑
          └────────────────────┴────────────────────┘
               首次激活时 POST /api/verify → tenant
-              返回专属 gatewayUrl + authToken
+              返回专属 gatewayUrl + gatewayToken
 ```
 
 > **1 个 License = 1 个 Docker 容器 = 1 个 exec 客户端**，三者一一对应，互相隔离。
@@ -164,7 +164,7 @@ openclaw-exec 桌面端启动，用户输入 licenseKey
       ✓ 首次调用：绑定 HWID，激活 license
       ↓
   返回 nodeConfig：
-      { gatewayUrl, gatewayToken, agentId, authToken }
+      { gatewayUrl, gatewayToken, agentId, licenseId }
       ↓
   exec 将 nodeConfig 持久化至本地 config.json
 ```
@@ -173,7 +173,7 @@ openclaw-exec 桌面端启动，用户输入 licenseKey
 
 ```
 openclaw-exec [Rust ws_client]
-  → 读取 config.json（gatewayUrl + authToken）
+  → 读取 config.json（gatewayUrl + gatewayToken）
   → 建立 wss:// 长连接至对应 openclaw Gateway 实例
   → 发送 connect 握手帧：
       { type: "req", method: "connect", role: "node", scopes: ["node.execute"] }
@@ -195,12 +195,12 @@ openclaw AI Agent（服务端）
   exec 同时 emit ws:task_result 事件 → React UI 更新任务监控面板
 ```
 
-### ⑤ authToken 自动轮换
+### ⑤ gatewayToken 自动轮换
 
 ```
 Token 到期（超过 token_ttl_days）后，下次 POST /api/verify 时：
-  → Tenant 自动生成新 authToken
-  → 更新数据库 auth_token / token_expires_at
+  → Tenant 自动生成新 gatewayToken
+  → 更新数据库 gateway_token / token_expires_at
   → 同步写入对应 openclaw 实例的 openclaw.json
   （对用户完全透明，无需管理员干预）
 ```
@@ -222,7 +222,7 @@ Token 到期（超过 token_ttl_days）后，下次 POST /api/verify 时：
 - **许可证管理**：创建、撤销、设置到期时间与 Token 轮换周期
 - **HWID 设备绑定**：首次激活后锁定物理设备，防止许可证共享
 - **Docker 异步编排**：自动 Compose up 拉起 openclaw 实例，追踪 `pending → running → ready → failed` 状态
-- **多租户 Token 缓存**：每个 License 独立 authToken，定期自动轮换
+- **多租户 Token 轮换**：每个 License 独立 gatewayToken，定期自动轮换
 
 ---
 
