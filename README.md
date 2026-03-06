@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Easy OpenClaw</h1>
-  <p>围绕 OpenClaw 构建的私有化部署工具链</p>
+  <p>Multi-tenant private deployment toolkit built on top of OpenClaw</p>
 </div>
 
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -10,123 +10,123 @@
 ![Rust](https://img.shields.io/badge/Rust-1.80+-F46623?logo=rust)
 ![Svelte](https://img.shields.io/badge/UI-Svelte%205-ff3e00?logo=svelte)
 
----
-
-## 简介
-
-**Easy OpenClaw** 是一套基于 [OpenClaw](https://github.com/openclaw/openclaw) 开源项目构建的**多租户私有化部署平台**。
-
-官方 OpenClaw 仅支持单用户自托管（一台机器跑一个实例），Easy OpenClaw 则在其之上构建了一套完整的控制平面，实现「**一套服务端，N 个用户各自独享一个隔离的 OpenClaw 实例**」的多租户模式。
-
-| 组件 | 定位 | 说明 |
-|------|------|---------|
-| **openclaw** | 数据平面 · 租户实例 | 官方开源自托管版，每个用户独享一个 Docker 容器 |
-| **openclaw-exec** | 客户端 · 桌面节点 | Tauri 2 + React 桌面应用，连接用户专属的 openclaw 实例 |
-| **openclaw-tenant** | 控制平面 · 管理后台 | Hono + Svelte 5，负责 License 管理、Docker 编排与授权鉴权 |
+[中文文档](./README.zh-CN.md)
 
 ---
 
-## 📦 项目结构
+## Overview
+
+**Easy OpenClaw** is a multi-tenant private deployment platform built on the [OpenClaw](https://github.com/openclaw/openclaw) open-source project.
+
+The official OpenClaw only supports single-user self-hosting (one instance per machine). Easy OpenClaw adds a full control plane on top, enabling **one server to serve N users, each with their own isolated OpenClaw instance**.
+
+| Component | Role | Description |
+|-----------|------|-------------|
+| **openclaw** | Data plane · tenant instance | Official open-source self-hosted gateway, one Docker/Podman container per user |
+| **openclaw-exec** | Client · desktop node | Tauri 2 + React desktop app, connects to the user's dedicated openclaw instance |
+| **openclaw-tenant** | Control plane · admin backend | Hono + Svelte 5, manages Licenses, container orchestration, and authentication |
+
+---
+
+## 📦 Repository Structure
 
 ```text
 easy-openclaw/
-├── openclaw/          # 自托管的 OpenClaw 核心服务（基于官方开源修改）
-├── openclaw-exec/     # 桌面端执行节点（Tauri 2 + React 18）
-└── openclaw-tenant/   # 授权与租户管理后台（Hono API + Svelte 5）
+├── openclaw/          # OpenClaw core service (modified from official upstream)
+├── openclaw-exec/     # Desktop execution node (Tauri 2 + React 18)
+└── openclaw-tenant/   # License & tenant management backend (Hono API + Svelte 5)
 ```
 
 ---
 
-## 🏗️ 架构概览
+## 🏗️ Architecture
 
-### 部署架构（多租户）
+### Deployment Architecture (Multi-tenant)
 
-每个用户（License）对应一个独立的 openclaw Docker 容器和一个 exec 桌面客户端，彼此完全隔离。openclaw-tenant 作为统一控制平面，管理所有实例的生命周期。
+Each user (License) maps to one isolated openclaw container and one exec desktop client. `openclaw-tenant` is the unified control plane managing all instance lifecycles.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         服务端（自托管）                               │
+│                         Server (Self-Hosted)                        │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                   openclaw-tenant（控制平面）                  │   │
+│  │                  openclaw-tenant (Control Plane)             │   │
 │  │   ┌──────────────┐    ┌──────────────┐    ┌─────────────┐  │   │
-│  │   │  Hono API    │    │  Svelte 管理  │    │  SQLite DB  │  │   │
-│  │   │  :3000       │    │  UI (admin)  │    │  licenses   │  │   │
+│  │   │  Hono API    │    │  Svelte 5    │    │  SQLite DB  │  │   │
+│  │   │  :3000       │    │  Admin UI    │    │  licenses   │  │   │
 │  │   └──────────────┘    └──────────────┘    └─────────────┘  │   │
 │  └─────┬──────────────────────────────────────────────────────┘   │
-│        │ 创建 License → provision-docker.sh / provision-podman.sh  │
-│        │ 每个 License 独立一个容器，端口隔离                          │
+│        │ Create License → provision-docker.sh / provision-podman.sh│
+│        │ Each License gets an isolated container + port            │
 │        ↓                                                           │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐           │
 │  │  openclaw   │    │  openclaw   │    │  openclaw   │           │
 │  │  Gateway A  │    │  Gateway B  │    │  Gateway C  │    ...    │
 │  │  :18800     │    │  :18801     │    │  :18802     │           │
-│  │  (Docker)   │    │  (Docker)   │    │  (Docker)   │           │
 │  └──────▲──────┘    └──────▲──────┘    └──────▲──────┘           │
 │         │ WebSocket         │ WebSocket         │ WebSocket        │
 └─────────┼───────────────────┼───────────────────┼─────────────────┘
           │                   │                   │
    ┌──────┴──────┐     ┌──────┴──────┐     ┌──────┴──────┐
    │ openclaw-   │     │ openclaw-   │     │ openclaw-   │
-   │ exec 用户A  │     │ exec 用户B  │     │ exec 用户C  │
-   │ 桌面客户端   │     │ 桌面客户端   │     │ 桌面客户端   │
+   │ exec User A │     │ exec User B │     │ exec User C │
+   │ (Desktop)   │     │ (Desktop)   │     │ (Desktop)   │
    └─────────────┘     └─────────────┘     └─────────────┘
          ↑                    ↑                    ↑
          └────────────────────┴────────────────────┘
-              首次激活时 POST /api/verify → tenant
-              返回专属 gatewayUrl + authToken
+              On first activation: POST /api/verify → tenant
+              Returns dedicated gatewayUrl + authToken
 ```
 
-> **1 个 License = 1 个 Docker 容器 = 1 个 exec 客户端**，三者一一对应，互相隔离。
+> **1 License = 1 Container = 1 exec client** — fully isolated, one-to-one mapping.
 
 ---
 
-### 服务架构（单租户内部）
-
-以单个用户为视角，三个组件的内部交互关系：
+### Service Architecture (Single Tenant View)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                            服务端 / 管理侧 (Self-Hosted)                     ║
+║                          Server / Admin Side (Self-Hosted)                   ║
 ║                                                                              ║
 ║  ┌────────────────────────┐       ┌──────────────────────────────────────┐  ║
-║  │    openclaw-tenant     │       │  openclaw（用户专属 Docker 实例）       │  ║
+║  │    openclaw-tenant     │       │  openclaw (User's Docker Instance)   │  ║
 ║  │                        │       │                                      │  ║
-║  │  [Svelte 5 Admin UI]   │ 创建  │  ┌─────────────┐  ┌──────────────┐  │  ║
+║  │  [Svelte 5 Admin UI]   │ spawn │  ┌─────────────┐  ┌──────────────┐  │  ║
 ║  │  [Hono REST API]       │──────►│  │   Gateway   │  │  AI Agent    │  │  ║
-║  │  [SQLite + 授权引擎]    │ Docker│  │  WebSocket  │  │  任务调度器  │  │  ║
-║  │                        │ 实例  │  │  (wss://)   │  │              │  │  ║
+║  │  [SQLite + Auth]       │ Docker│  │  WebSocket  │  │  Scheduler   │  │  ║
+║  │                        │       │  │  (wss://)   │  │              │  │  ║
 ║  └──────────┬─────────────┘       │  └──────┬──────┘  └──────────────┘  │  ║
-║             │                     │         │ 下发 node.invoke 指令        │  ║
+║             │                     │         │ push node.invoke            │  ║
 ║             │ ① POST /api/verify  └─────────┼──────────────────────────┘  ║
-║             │   返回 nodeConfig             │                              ║
+║             │   returns nodeConfig          │                              ║
 ╚═════════════╪═════════════════════════════╪══════════════════════════════╝
               │                             │
-              │                             │ ② wss:// 长连接
-              │                             │   connect 握手帧 (role=node)
+              │                             │ ② wss:// persistent connection
+              │                             │   connect frame (role=node)
               ▼                             ▼
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                           客户端设备 / 终端侧 (Client)                        ║
+║                           Client Device (End User)                           ║
 ║                                                                              ║
 ║  ┌───────────────────────────────────────────────────────────────────────┐  ║
-║  │                      openclaw-exec（桌面节点）                          │  ║
+║  │                       openclaw-exec (Desktop Node)                    │  ║
 ║  │  ┌─────────────────────────────────────────────┐                     │  ║
-║  │  │           React UI（系统托盘 / 任务监控面板）   │                     │  ║
+║  │  │        React UI (System Tray / Task Monitor) │                     │  ║
 ║  │  └───────────────────┬─────────────────────────┘                     │  ║
 ║  │                  Tauri IPC                                            │  ║
 ║  │  ┌───────────────────┴─────────────────────────┐                     │  ║
 ║  │  │                  Rust Core                  │                     │  ║
 ║  │  │  ├── auth_client  → POST /api/verify         │                     │  ║
-║  │  │  ├── config       → 持久化 config.json        │                     │  ║
-║  │  │  └── ws_client    → wss:// Gateway 长连接    │                     │  ║
-║  │  │       ├── 发送 connect 握手帧                 │                     │  ║
-║  │  │       ├── 接收 node.invoke → 执行本地任务     │                     │  ║
-║  │  │       └── 回传 TaskResult → Gateway          │                     │  ║
+║  │  │  ├── device_identity → ed25519 key + sign    │                     │  ║
+║  │  │  ├── config       → persist config.json      │                     │  ║
+║  │  │  └── ws_client    → wss:// Gateway           │                     │  ║
+║  │  │       ├── send connect frame                 │                     │  ║
+║  │  │       ├── receive node.invoke → execute      │                     │  ║
+║  │  │       └── return TaskResult → Gateway        │                     │  ║
 ║  │  └─────────────────────────────────────────────┘                     │  ║
 ║  │                      ↕ stdin / stdout IPC                             │  ║
 ║  │  ┌─────────────────────────────────────────────┐                     │  ║
-║  │  │              Sidecar（Node.js 子进程）         │                     │  ║
-║  │  │  处理高阶任务：browser / system / vision       │                     │  ║
+║  │  │     Sidecar (Node.js subprocess)            │                     │  ║
+║  │  │  browser / system / vision automation       │                     │  ║
 ║  │  └─────────────────────────────────────────────┘                     │  ║
 ║  └───────────────────────────────────────────────────────────────────────┘  ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -134,244 +134,239 @@ easy-openclaw/
 
 ---
 
-## 🔄 关键交互时序
+## 🔄 Key Interaction Flows
 
-### ① 管理员创建许可证（License Provisioning）
+### ① Admin Creates a License (Provisioning)
 
 ```
-管理员（Svelte UI）
-  → POST /api/auth/login               # JWT 认证
-  → POST /api/licenses                 # 创建许可证（可选 ownerTag / expiryDate / tokenTtlDays / hostIp / baseDomain）
+Admin (Svelte UI)
+  → POST /api/auth/login               # JWT auth
+  → POST /api/licenses                 # Create license (optional: ownerTag / expiryDate / baseDomain)
       ↓
-  [Tenant 后台 Worker 异步执行]
-      ├── 从 settings 读取全局默认并写入 license 快照（runtime_provider/runtime_dir/data_dir）
-      ├── 分配 gateway_port / bridge_port
-      ├── 按 license 快照执行 docker/podman provision 脚本，拉起独立 openclaw 实例
-      ├── 读取实例生成的 openclaw.json（含 gateway.auth.token）
-      ├── [可选] 若 license.nginx_host 存在，写入 Nginx 配置并刷新反向代理
-      └── 更新 provision_status: pending → running → ready
+  [Tenant background worker]
+      ├── Read settings defaults → snapshot into license (runtime_provider / runtime_dir / data_dir)
+      ├── Allocate gateway_port / bridge_port
+      ├── Run provision-docker.sh or provision-podman.sh → start dedicated openclaw container
+      ├── Read generated openclaw.json (contains gateway.auth.token)
+      ├── [Optional] Write Nginx config if license.nginx_host is set
+      └── Update provision_status: pending → running → ready
 ```
 
-### ② 用户首次激活（Verify & HWID 绑定）
+### ② User Activates License (Verify & HWID Binding)
 
 ```
-openclaw-exec 桌面端启动，用户输入 licenseKey
-  → [Rust auth_client] POST /api/verify { hwid, licenseKey, deviceName }
+openclaw-exec starts, user enters licenseKey
+  → [Rust auth_client] POST /api/verify { hwid, licenseKey, deviceName, publicKey }
       ↓
-  Tenant API 校验：
-      ✓ licenseKey 有效 & 未撤销 & 未过期
-      ✓ provision_status = ready（否则 409）
-      ✓ 首次调用：绑定 HWID，激活 license
+  Tenant validates:
+      ✓ licenseKey valid, not revoked, not expired
+      ✓ provision_status = ready (else 409)
+      ✓ First call: bind HWID, activate license
       ↓
-  返回 nodeConfig：
-      { gatewayUrl, gatewayToken, agentId, authToken }
+  Returns nodeConfig:
+      { gatewayUrl, gatewayToken, agentId, authToken, licenseId }
       ↓
-  exec 将 nodeConfig 持久化至本地 config.json
+  exec persists nodeConfig to local config.json
 ```
 
-### ③ 建立 Gateway 长连接（WebSocket 握手）
+### ③ Establish Gateway Connection (WebSocket Handshake)
 
 ```
-openclaw-exec [Rust ws_client]
-  → 读取 config.json（gatewayUrl + authToken）
-  → 建立 wss:// 长连接至对应 openclaw Gateway 实例
-  → 发送 connect 握手帧：
-      { type: "req", method: "connect", role: "node", scopes: ["node.execute"] }
-  → Gateway 响应握手成功 → emit ws:connected 事件至 React UI
+[Rust ws_client]
+  → Read config.json (gatewayUrl + authToken)
+  → Open wss:// persistent connection to dedicated openclaw Gateway
+  → Send connect frame:
+      { role: "node", scopes: ["node.execute"], device: { publicKey, signature } }
+  → Gateway verifies deviceId against paired.json
+  → Connection established → React UI shows online status
 ```
 
-### ④ 云端下发任务并执行
+### ④ Task Dispatch & Execution
 
 ```
-openclaw AI Agent（服务端）
-  → Gateway 推送 node.invoke { command, args }
+openclaw AI Agent (server-side)
+  → Gateway pushes node.invoke { command, args }
       ↓
-  exec ws_client 接收后：
-      ├── 简单命令（system.run）→ Rust 直接执行本地 shell
-      └── 高阶任务（browser / vision）→ stdin IPC 转发至 Sidecar 子进程
-              Sidecar [Node.js] 执行后 → stdout IPC 回传结果
+  exec ws_client receives:
+      ├── Simple commands (system.run) → Rust executes local shell directly
+      └── Advanced tasks (browser / vision) → stdin IPC → Sidecar subprocess (Node.js)
+                                              → stdout IPC returns result
       ↓
-  exec 将 TaskResult 回传 Gateway → AI Agent 收到执行结果
-  exec 同时 emit ws:task_result 事件 → React UI 更新任务监控面板
+  exec returns TaskResult to Gateway → AI Agent receives execution feedback
 ```
 
-### ⑤ authToken 自动轮换
+### ⑤ authToken Auto-Rotation
 
 ```
-Token 到期（超过 token_ttl_days）后，下次 POST /api/verify 时：
-  → Tenant 自动生成新 authToken
-  → 更新数据库 auth_token / token_expires_at
-  → 同步写入对应 openclaw 实例的 openclaw.json
-  （对用户完全透明，无需管理员干预）
+After token expires (> token_ttl_days), on next POST /api/verify:
+  → Tenant generates new authToken
+  → Updates DB auth_token / token_expires_at
+  → Syncs new token to openclaw.json of the instance
+  (Transparent to the user — no manual intervention required)
 ```
 
 ---
 
-## ✨ 核心功能
+## ✨ Features
 
-### openclaw-exec（桌面节点）
+### openclaw-exec (Desktop Node)
 
-- **跨平台支持**：Windows / macOS / Linux（基于 Tauri 2）
-- **实时任务接收**：WebSocket 长连接，低延迟接收云端指令
-- **本地任务执行**：支持 `system.run`（shell）、`browser`（浏览器自动化）、`vision`（视觉识别）
-- **原生系统集成**：系统托盘静默运行、原生通知、本地数据持久化
-- **Sidecar 扩展**：Node.js 子进程通过 stdin/stdout IPC 处理高阶自动化任务
+- **Cross-platform**: Windows / macOS / Linux (Tauri 2)
+- **Real-time task reception**: WebSocket long connection, low-latency command delivery
+- **Local task execution**: `system.run` (shell), `browser` (browser automation), `vision` (visual recognition)
+- **Native OS integration**: system tray, native notifications, local data persistence
+- **Device identity**: ed25519 key pair generated locally, deviceId derived via SHA-256
+- **Sidecar extension**: Node.js subprocess handles advanced automation via stdin/stdout IPC
 
-### openclaw-tenant（授权管理后台）
+### openclaw-tenant (Auth & Management Backend)
 
-- **许可证管理**：创建、撤销、设置到期时间与 Token 轮换周期
-- **HWID 设备绑定**：首次激活后锁定物理设备，防止许可证共享
-- **Docker 异步编排**：自动 Compose up 拉起 openclaw 实例，追踪 `pending → running → ready → failed` 状态
-- **多租户 Token 缓存**：每个 License 独立 authToken，定期自动轮换
-
----
-
-## 🛠️ 技术栈
-
-| 组件 | 技术 |
-|------|------|
-| **openclaw** | 官方开源自托管，Node.js / TypeScript |
-| **openclaw-exec 前端** | React 18 · React Router v6 · Zustand · Tailwind CSS · Vite |
-| **openclaw-exec 核心层** | Tauri v2 · Rust · Tokio · Tokio-Tungstenite · Reqwest |
-| **openclaw-exec Sidecar** | Node.js · TypeScript（browser / system / vision 模块） |
-| **openclaw-tenant 后端** | Hono · SQLite（bun:sqlite）· JWT（HS256）· bcrypt |
-| **openclaw-tenant 前端** | Svelte 5 (Runes) · TailwindCSS v4 · Vite |
-| **运行时** | Bun（tenant） · Node.js ≥ 18（exec 构建） · Rust 稳定版 |
+- **License management**: create, revoke, set expiry and token rotation period
+- **HWID device binding**: locks to a physical device on first activation
+- **Container orchestration**: async Docker/Podman provisioning, tracks `pending → running → ready → failed`
+- **Runtime auto-detection**: detects Docker or Podman via socket file at startup
+- **Settings UI**: runtime provider, port ranges, base domain configurable via admin UI
+- **Multi-tenant token cache**: per-license authToken with automatic rotation
 
 ---
 
-## 🚀 快速开始
+## 🛠️ Tech Stack
 
-### 前置依赖
-
-| 工具 | 用途 | 版本要求 |
-|------|------|----------|
-| [Node.js](https://nodejs.org/) | openclaw-exec 构建 | ≥ 18.x |
-| [Bun](https://bun.sh/) | openclaw-tenant 运行时 | 最新稳定版 |
-| [Rust + Cargo](https://rustup.rs/) | Tauri 核心层编译 | 最新稳定版 |
-| Docker | openclaw 实例编排 | ≥ 24.x |
+| Component | Technology |
+|-----------|------------|
+| **openclaw** | Official open-source, Node.js / TypeScript |
+| **openclaw-exec frontend** | React 18 · React Router v6 · Zustand · Tailwind CSS · Vite |
+| **openclaw-exec core** | Tauri v2 · Rust · Tokio · Tokio-Tungstenite · ed25519-dalek |
+| **openclaw-exec sidecar** | Node.js · TypeScript (browser / system / vision) |
+| **openclaw-tenant backend** | Hono · SQLite (bun:sqlite) · JWT (HS256) · bcrypt |
+| **openclaw-tenant frontend** | Svelte 5 (Runes) · TailwindCSS v4 · Vite |
+| **Runtime** | Bun (tenant) · Node.js ≥ 18 (exec build) · Rust stable |
 
 ---
 
-### 1. 启动 openclaw-tenant（授权管理后台）
+## 🚀 Getting Started
+
+### Prerequisites
+
+| Tool | Purpose | Version |
+|------|---------|---------|
+| [Node.js](https://nodejs.org/) | openclaw-exec build | ≥ 18.x |
+| [Bun](https://bun.sh/) | openclaw-tenant runtime | latest stable |
+| [Rust + Cargo](https://rustup.rs/) | Tauri core compilation | latest stable |
+| Docker or Podman | openclaw instance orchestration | Docker ≥ 24.x |
+
+### 1. Start openclaw-tenant (Admin Backend)
 
 ```bash
 cd openclaw-tenant
 
-# 安装依赖
+# Install dependencies
 bun install
 
-# 配置环境变量
+# Configure environment
 cp .env.example .env
-# 编辑 .env，设置 JWT_SECRET、ADMIN_USER、ADMIN_PASS 等关键变量
+# Edit .env: set JWT_SECRET, ADMIN_USER, ADMIN_PASS, and runtime paths
 
-# 开发模式启动
-bun run dev:api    # Terminal 1：启动 Hono API（默认 :3000）
-bun run dev:ui     # Terminal 2：启动 Svelte 管理 UI（默认 :5173）
+# Dev mode
+bun run dev:api    # Terminal 1: Hono API (default :3000)
+bun run dev:ui     # Terminal 2: Svelte Admin UI (default :5173)
 ```
 
-> 进入管理 UI 后，创建 License 并等待 `provision_status` 变为 `ready`，即可获得 `licenseKey`。
+> After entering the admin UI, create a License and wait for `provision_status` to become `ready`.
 
----
-
-### 2. 启动 openclaw-exec（桌面节点）
+### 2. Start openclaw-exec (Desktop Node)
 
 ```bash
 cd openclaw-exec
 
-# 安装前端依赖
+# Install frontend dependencies
 npm install
 
-# 开发模式（拉起 Vite + Tauri 桌面窗口）
+# Dev mode (Vite + Tauri desktop window)
 npm run tauri:dev
 
-# 生产构建
+# Production build
 npm run tauri:build
 ```
 
-> 启动后，在设置页面填入 `licenseKey`，完成激活即可连接至对应 openclaw Gateway。
+> Enter the `licenseKey` in the settings page to activate and connect to your dedicated openclaw Gateway.
 
 ---
 
-## ⚙️ 环境配置
+## ⚙️ Environment Variables
 
-openclaw-tenant 关键环境变量（参见 `.env.example`）：
+Key variables for `openclaw-tenant` (see `.env.example`):
 
-| 变量 | 说明 |
-|------|------|
-| `JWT_SECRET` | JWT 签名密钥，生产环境必须设置强密钥 |
-| `ADMIN_USER` / `ADMIN_PASS` | 管理员账号（默认 `admin` / `admin123`，**生产请务必修改**） |
-| `OPENCLAW_HOST_IP` | settings 的默认 host_ip（仅首次初始化 settings 时使用） |
-| `OPENCLAW_RUNTIME_DIR` | settings 的默认 runtime_dir（仅首次初始化 settings 时使用） |
-| `OPENCLAW_DATA_DIR` | settings 的默认 data_dir（仅首次初始化 settings 时使用） |
-| `OPENCLAW_GATEWAY_PORT_START/END` | settings 的默认 Gateway 端口范围（仅首次初始化 settings 时使用） |
-| `OPENCLAW_BASE_DOMAIN` | settings 的默认 base_domain（仅首次初始化 settings 时使用） |
-| `NGINX_SITE_DIR` / `NGINX_RELOAD_CMD` | 域名模式下 Nginx 配置写入与重载命令 |
+| Variable | Description |
+|----------|-------------|
+| `JWT_SECRET` | JWT signing secret — use a strong value in production |
+| `ADMIN_USER` / `ADMIN_PASS` | Admin credentials (default `admin` / `admin123` — **change in production**) |
+| `OPENCLAW_HOST_IP` | Default host_ip for settings (used only on first-time init) |
+| `OPENCLAW_RUNTIME_DIR` | Default runtime_dir for settings (used only on first-time init) |
+| `OPENCLAW_DATA_DIR` | Default data_dir for settings (used only on first-time init) |
+| `OPENCLAW_GATEWAY_PORT_START/END` | Default gateway port range for settings |
+| `OPENCLAW_BASE_DOMAIN` | Default base_domain for settings (enables Nginx subdomain mode) |
+| `NGINX_SITE_DIR` / `NGINX_RELOAD_CMD` | Nginx config path and reload command for domain mode |
 
-### Settings 与 License 快照策略
+### Settings & License Snapshot Strategy
 
-1. `settings`：全局默认模板（可在 UI `Settings` 页面修改）。
-2. `license`：创建时固化一份“生效快照”（`runtime_provider/runtime_dir/data_dir/nginx_host` 等）。
-3. 域名优先级：`POST /api/licenses` 的 `baseDomain` > `settings.base_domain` > 空（IP:端口模式）。
-4. provisioning 运行时以 license 行内值为准，避免后续改全局设置影响已发 license。
-
----
-
-## 📂 文档索引
-
-- [认证流程](./openclaw-tenant/docs/AUTHENTICATION.md)
-- [后端 API 规范](./openclaw-tenant/docs/BACKEND_API.md)
-- [许可证编排引擎](./openclaw-tenant/docs/LICENSE_PROVISIONING.md)
-- [UI 设计规范](./openclaw-tenant/docs/UI_DESIGN.md)
-- [环境变量说明](./openclaw-tenant/docs/ENVIRONMENT.md)
+1. **`settings` table**: global defaults template (editable via Admin UI Settings page).
+2. **`license` row**: snapshots the runtime config at creation time (`runtime_provider`, `runtime_dir`, `data_dir`, `nginx_host`).
+3. Domain priority: `POST /api/licenses` `baseDomain` > `settings.base_domain` > none (IP:port mode).
+4. Provisioning always uses the license-level snapshot — changing global settings does not affect already-issued licenses.
 
 ---
 
-## 🔧 Git Submodule 工作流
+## 📂 Documentation Index
 
-本仓库是 **superproject + submodule** 结构：
+- [Authentication Flow](./openclaw-tenant/docs/AUTHENTICATION.md)
+- [Backend API Reference](./openclaw-tenant/docs/BACKEND_API.md)
+- [License Provisioning Engine](./openclaw-tenant/docs/LICENSE_PROVISIONING.md)
+- [UI Design Spec](./openclaw-tenant/docs/UI_DESIGN.md)
+- [Environment Variables](./openclaw-tenant/docs/ENVIRONMENT.md)
+
+---
+
+## 🔧 Git Submodule Workflow
+
+This repository uses a **superproject + submodules** structure:
 
 - `openclaw/`
 - `openclaw-exec/`
 - `openclaw-tenant/`
 
-### 1. 首次拉取
+### Initial Clone
 
 ```bash
 git clone --recurse-submodules <easy-openclaw-repo-url>
 ```
 
-如果已经 clone 过根仓库，再执行：
+If you already cloned the root repo:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-### 2. 修改子模块后的提交流程（必须按顺序）
+### Committing Changes to a Submodule
 
-示例：你修改了 `openclaw-exec/`
+Example: modifying `openclaw-exec/`
 
 ```bash
-# Step 1: 在子模块内提交并推送代码
+# Step 1: commit and push inside the submodule
 cd openclaw-exec
 git add .
 git commit -m "feat: your change"
 git push origin <your-branch>
 
-# Step 2: 回到根仓库，提交“子模块指针”更新
+# Step 2: update the submodule pointer in the root repo
 cd ..
 git add openclaw-exec
 git commit -m "chore: bump openclaw-exec submodule"
 git push origin main
 ```
 
-### 3. 重要注意事项
+> Always push the submodule **before** pushing the root repo. The root repo stores a commit SHA pointer, not the source code itself.
 
-1. 先推送子模块，再推送根仓库。否则别人拉根仓库时可能找不到对应子模块 commit。
-2. 根仓库提交的是子模块 commit SHA（指针），不是子模块源码。
-3. 只有修改了子模块 URL 或路径时，才需要提交 `.gitmodules`。
-
-### 4. 更新到最新子模块内容
+### Pull Latest Submodule Content
 
 ```bash
 git pull
@@ -380,18 +375,18 @@ git submodule update --init --recursive
 
 ---
 
-## 🤝 参与贡献
+## 🤝 Contributing
 
-欢迎任何形式的贡献！请先阅读各子项目根目录下的 `AGENTS.md` 了解代码规范。
+Contributions are welcome! Please read the `AGENTS.md` in each subproject root for code conventions.
 
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/your-feature`)
-3. 提交修改 (`git commit -m 'feat: add your feature'`)
-4. 推送分支 (`git push origin feature/your-feature`)
-5. 发起 Pull Request
+1. Fork this repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -m 'feat: add your feature'`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Open a Pull Request
 
 ---
 
-## 📄 许可证
+## 📄 License
 
-本项目采用 [MIT License](LICENSE) 许可协议。
+This project is licensed under the [MIT License](LICENSE).
