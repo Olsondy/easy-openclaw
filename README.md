@@ -163,10 +163,12 @@ openclaw-exec starts, user enters licenseKey
       ✓ provision_status = ready (else 409)
       ✓ First call: bind HWID, activate license
       ↓
-  Returns nodeConfig:
-      { gatewayUrl, gatewayToken, agentId, authToken, licenseId }
+  Returns nodeConfig + needsBootstrap:
+      { gatewayUrl, gatewayToken, agentId, authToken, licenseId, tenantUrl }
+      { needsBootstrap: { feishu: true/false } }
       ↓
-  exec persists nodeConfig to local config.json
+  exec stores nodeConfig in memory (not persisted)
+  If needsBootstrap.feishu = true → show Bootstrap Wizard
 ```
 
 ### ③ Establish Gateway Connection (WebSocket Handshake)
@@ -195,7 +197,29 @@ openclaw AI Agent (server-side)
   exec returns TaskResult to Gateway → AI Agent receives execution feedback
 ```
 
-### ⑤ authToken Auto-Rotation
+### ⑤ Bootstrap Config Wizard (First Launch)
+
+```
+exec detects needsBootstrap.feishu = true
+  → Show FeishuWizard modal (appId + appSecret)
+      ↓
+  User submits
+  → POST {tenantUrl}/api/licenses/{licenseId}/bootstrap-config
+      { authToken, feishu: { appId, appSecret } }
+      ↓
+  Tenant writes to openclaw.json in container config dir:
+      channels.feishu.appId / channels.feishu.appSecret
+  → openclaw hot-reloads feishu channel (no restart needed)
+  → Sets wizard_feishu_done = 1 in DB
+      ↓
+  exec calls verifyAndConnect() again
+  → needsBootstrap.feishu = false, wizard dismissed
+  → Feishu channel active immediately
+
+  exec Settings page always shows "飞书配置" entry for reconfiguration
+```
+
+### ⑥ authToken Auto-Rotation
 
 ```
 After token expires (> token_ttl_days), on next POST /api/verify:
@@ -223,6 +247,9 @@ After token expires (> token_ttl_days), on next POST /api/verify:
 - **License management**: create, revoke, set expiry and token rotation period
 - **HWID device binding**: locks to a physical device on first activation
 - **Container orchestration**: async Docker/Podman provisioning, tracks `pending → running → ready → failed`
+- **Baseline config pre-seeding**: provision script writes gateway, tools, models, agents, commands defaults into `openclaw.json` — no interactive wizard needed
+- **Model API key injection**: `model_presets` table stores AES-256-GCM encrypted API keys; injected into `openclaw.json` after provisioning
+- **Bootstrap config API**: exec wizard submits Feishu credentials via `POST /api/licenses/:id/bootstrap-config`; written to container config and hot-reloaded
 - **Runtime auto-detection**: detects Docker or Podman via socket file at startup
 - **Settings UI**: runtime provider, port ranges, base domain configurable via admin UI
 - **Multi-tenant token cache**: per-license authToken with automatic rotation
@@ -305,6 +332,7 @@ Key variables for `openclaw-tenant` (see `.env.example`):
 | `OPENCLAW_DATA_DIR` | Default data_dir for settings (used only on first-time init) |
 | `OPENCLAW_GATEWAY_PORT_START/END` | Default gateway port range for settings |
 | `OPENCLAW_BASE_DOMAIN` | Default base_domain for settings (enables Nginx subdomain mode) |
+| `TENANT_PUBLIC_URL` | Public URL of this tenant API (e.g. `https://tenant.example.com`) — returned to exec via verify response for bootstrap-config calls |
 | `NGINX_SITE_DIR` / `NGINX_RELOAD_CMD` | Nginx config path and reload command for domain mode |
 
 ### Settings & License Snapshot Strategy
