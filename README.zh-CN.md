@@ -21,7 +21,7 @@
 | 组件 | 定位 | 说明 |
 |------|------|---------|
 | **openclaw** | 数据平面 · 租户实例 | 官方开源自托管版，每个用户独享一个 Docker 容器 |
-| **openclaw-exec** | 客户端 · 桌面节点 | Tauri 2 + React 桌面应用，连接用户专属的 openclaw 实例 |
+| **openclaw-clawmate** | 客户端 · 桌面节点 | Tauri 2 + React 桌面应用，连接用户专属的 openclaw 实例 |
 | **openclaw-tenant** | 控制平面 · 管理后台 | Hono + Svelte 5，负责 License 管理、Docker 编排与授权鉴权 |
 
 ---
@@ -31,7 +31,7 @@
 ```text
 easy-openclaw/
 ├── openclaw/          # 自托管的 OpenClaw 核心服务（基于官方开源修改）
-├── openclaw-exec/     # 桌面端执行节点（Tauri 2 + React 18）
+├── openclaw-clawmate/     # 桌面端执行节点（Tauri 2 + React 18）
 └── openclaw-tenant/   # 授权与租户管理后台（Hono API + Svelte 5）
 ```
 
@@ -109,7 +109,7 @@ easy-openclaw/
 ║                           客户端设备 / 终端侧 (Client)                        ║
 ║                                                                              ║
 ║  ┌───────────────────────────────────────────────────────────────────────┐  ║
-║  │                      openclaw-exec（桌面节点）                          │  ║
+║  │                      openclaw-clawmate（桌面节点）                          │  ║
 ║  │  ┌─────────────────────────────────────────────┐                     │  ║
 ║  │  │           React UI（系统托盘 / 任务监控面板）   │                     │  ║
 ║  │  └───────────────────┬─────────────────────────┘                     │  ║
@@ -155,7 +155,7 @@ easy-openclaw/
 ### ② 用户首次激活（Verify & HWID 绑定）
 
 ```
-openclaw-exec 桌面端启动，用户输入 licenseKey
+openclaw-clawmate 桌面端启动，用户输入 licenseKey
   → [Rust auth_client] POST /api/verify { hwid, licenseKey, deviceName, publicKey }
       ↓
   Tenant API 校验：
@@ -172,7 +172,7 @@ openclaw-exec 桌面端启动，用户输入 licenseKey
 ### ③ 建立 Gateway 长连接（WebSocket 握手）
 
 ```
-openclaw-exec [Rust ws_client]
+openclaw-clawmate [Rust ws_client]
   → 读取 config.json（gatewayUrl + gatewayToken）
   → 建立 wss:// 长连接至对应 openclaw Gateway 实例
   → 发送 connect 握手帧：
@@ -225,7 +225,7 @@ Token 到期（超过 token_ttl_days）后，下次 POST /api/verify 时：
 
 ## ✨ 核心功能
 
-### openclaw-exec（桌面节点）
+### openclaw-clawmate（桌面节点）
 
 - **跨平台支持**：Windows / macOS / Linux（基于 Tauri 2）
 - **实时任务接收**：WebSocket 长连接，低延迟接收云端指令
@@ -247,9 +247,9 @@ Token 到期（超过 token_ttl_days）后，下次 POST /api/verify 时：
 | 组件 | 技术 |
 |------|------|
 | **openclaw** | 官方开源自托管，Node.js / TypeScript |
-| **openclaw-exec 前端** | React 18 · React Router v6 · Zustand · Tailwind CSS · Vite |
-| **openclaw-exec 核心层** | Tauri v2 · Rust · Tokio · Tokio-Tungstenite · Reqwest |
-| **openclaw-exec Sidecar** | Node.js · TypeScript（browser / system / vision 模块） |
+| **openclaw-clawmate 前端** | React 18 · React Router v6 · Zustand · Tailwind CSS · Vite |
+| **openclaw-clawmate 核心层** | Tauri v2 · Rust · Tokio · Tokio-Tungstenite · Reqwest |
+| **openclaw-clawmate Sidecar** | Node.js · TypeScript（browser / system / vision 模块） |
 | **openclaw-tenant 后端** | Hono · SQLite（bun:sqlite）· JWT（HS256）· bcrypt |
 | **openclaw-tenant 前端** | Svelte 5 (Runes) · TailwindCSS v4 · Vite |
 | **运行时** | Bun（tenant） · Node.js ≥ 18（exec 构建） · Rust 稳定版 |
@@ -262,7 +262,7 @@ Token 到期（超过 token_ttl_days）后，下次 POST /api/verify 时：
 
 | 工具 | 用途 | 版本要求 |
 |------|------|----------|
-| [Node.js](https://nodejs.org/) | openclaw-exec 构建 | ≥ 18.x |
+| [Node.js](https://nodejs.org/) | openclaw-clawmate 构建 | ≥ 18.x |
 | [Bun](https://bun.sh/) | openclaw-tenant 运行时 | 最新稳定版 |
 | [Rust + Cargo](https://rustup.rs/) | Tauri 核心层编译 | 最新稳定版 |
 | Docker | openclaw 实例编排 | ≥ 24.x |
@@ -290,10 +290,10 @@ bun run dev:ui     # Terminal 2：启动 Svelte 管理 UI（默认 :5173）
 
 ---
 
-### 2. 启动 openclaw-exec（桌面节点）
+### 2. 启动 openclaw-clawmate（桌面节点）
 
 ```bash
-cd openclaw-exec
+cd openclaw-clawmate
 
 # 安装前端依赖
 npm install
@@ -348,7 +348,7 @@ openclaw-tenant 关键环境变量（参见 `.env.example`）：
 本仓库是 **superproject + submodule** 结构：
 
 - `openclaw/`
-- `openclaw-exec/`
+- `openclaw-clawmate/`
 - `openclaw-tenant/`
 
 ### 1. 首次拉取
@@ -365,19 +365,19 @@ git submodule update --init --recursive
 
 ### 2. 修改子模块后的提交流程（必须按顺序）
 
-示例：你修改了 `openclaw-exec/`
+示例：你修改了 `openclaw-clawmate/`
 
 ```bash
 # Step 1: 在子模块内提交并推送代码
-cd openclaw-exec
+cd openclaw-clawmate
 git add .
 git commit -m "feat: your change"
 git push origin <your-branch>
 
 # Step 2: 回到根仓库，提交“子模块指针”更新
 cd ..
-git add openclaw-exec
-git commit -m "chore: bump openclaw-exec submodule"
+git add openclaw-clawmate
+git commit -m "chore: bump openclaw-clawmate submodule"
 git push origin main
 ```
 

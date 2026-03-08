@@ -23,7 +23,7 @@ The official OpenClaw only supports single-user self-hosting (one instance per m
 | Component | Role | Description |
 |-----------|------|-------------|
 | **openclaw** | Data plane · tenant instance | Official open-source self-hosted gateway, one Docker/Podman container per user |
-| **openclaw-exec** | Client · desktop node | Tauri 2 + React desktop app, connects to the user's dedicated openclaw instance |
+| **openclaw-clawmate** | Client · desktop node | Tauri 2 + React desktop app, connects to the user's dedicated openclaw instance |
 | **openclaw-tenant** | Control plane · admin backend | Hono + Svelte 5, manages Licenses, container orchestration, and authentication |
 
 ---
@@ -33,7 +33,7 @@ The official OpenClaw only supports single-user self-hosting (one instance per m
 ```text
 easy-openclaw/
 ├── openclaw/          # OpenClaw core service (modified from official upstream)
-├── openclaw-exec/     # Desktop execution node (Tauri 2 + React 18)
+├── openclaw-clawmate/     # Desktop execution node (Tauri 2 + React 18)
 └── openclaw-tenant/   # License & tenant management backend (Hono API + Svelte 5)
 ```
 
@@ -108,7 +108,7 @@ Each user (License) maps to one isolated openclaw container and one exec desktop
 ║                           Client Device (End User)                           ║
 ║                                                                              ║
 ║  ┌───────────────────────────────────────────────────────────────────────┐  ║
-║  │                       openclaw-exec (Desktop Node)                    │  ║
+║  │                       openclaw-clawmate (Desktop Node)                    │  ║
 ║  │  ┌─────────────────────────────────────────────┐                     │  ║
 ║  │  │        React UI (System Tray / Task Monitor) │                     │  ║
 ║  │  └───────────────────┬─────────────────────────┘                     │  ║
@@ -155,7 +155,7 @@ Admin (Svelte UI)
 ### ② User Activates License (Verify & HWID Binding)
 
 ```
-openclaw-exec starts, user enters licenseKey
+openclaw-clawmate starts, user enters licenseKey
   → [Rust auth_client] POST /api/verify { hwid, licenseKey, deviceName, publicKey }
       ↓
   Tenant validates:
@@ -237,7 +237,7 @@ After token expires (> token_ttl_days), on next POST /api/verify:
 
 ## ✨ Features
 
-### openclaw-exec (Desktop Node)
+### openclaw-clawmate (Desktop Node)
 
 - **Cross-platform**: Windows / macOS / Linux (Tauri 2)
 - **Real-time task reception**: WebSocket long connection, low-latency command delivery
@@ -265,9 +265,9 @@ After token expires (> token_ttl_days), on next POST /api/verify:
 | Component | Technology |
 |-----------|------------|
 | **openclaw** | Official open-source, Node.js / TypeScript |
-| **openclaw-exec frontend** | React 18 · React Router v6 · Zustand · Tailwind CSS · Vite |
-| **openclaw-exec core** | Tauri v2 · Rust · Tokio · Tokio-Tungstenite · ed25519-dalek |
-| **openclaw-exec sidecar** | Node.js · TypeScript (browser / system / vision) |
+| **openclaw-clawmate frontend** | React 18 · React Router v6 · Zustand · Tailwind CSS · Vite |
+| **openclaw-clawmate core** | Tauri v2 · Rust · Tokio · Tokio-Tungstenite · ed25519-dalek |
+| **openclaw-clawmate sidecar** | Node.js · TypeScript (browser / system / vision) |
 | **openclaw-tenant backend** | Hono · SQLite (bun:sqlite) · JWT (HS256) · bcrypt |
 | **openclaw-tenant frontend** | Svelte 5 (Runes) · TailwindCSS v4 · Vite |
 | **Runtime** | Bun (tenant) · Node.js ≥ 18 (exec build) · Rust stable |
@@ -280,7 +280,7 @@ After token expires (> token_ttl_days), on next POST /api/verify:
 
 | Tool | Purpose | Version |
 |------|---------|---------|
-| [Node.js](https://nodejs.org/) | openclaw-exec build | ≥ 18.x |
+| [Node.js](https://nodejs.org/) | openclaw-clawmate build | ≥ 18.x |
 | [Bun](https://bun.sh/) | openclaw-tenant runtime | latest stable |
 | [Rust + Cargo](https://rustup.rs/) | Tauri core compilation | latest stable |
 | Docker or Podman | openclaw instance orchestration | Docker ≥ 24.x |
@@ -304,10 +304,10 @@ bun run dev:ui     # Terminal 2: Svelte Admin UI (default :5173)
 
 > After entering the admin UI, create a License and wait for `provision_status` to become `ready`.
 
-### 2. Start openclaw-exec (Desktop Node)
+### 2. Start openclaw-clawmate (Desktop Node)
 
 ```bash
-cd openclaw-exec
+cd openclaw-clawmate
 
 # Install frontend dependencies
 npm install
@@ -363,7 +363,7 @@ Key variables for `openclaw-tenant` (see `.env.example`):
 This repository uses a **superproject + submodules** structure:
 
 - `openclaw/`
-- `openclaw-exec/`
+- `openclaw-clawmate/`
 - `openclaw-tenant/`
 
 ### Initial Clone
@@ -380,19 +380,19 @@ git submodule update --init --recursive
 
 ### Committing Changes to a Submodule
 
-Example: modifying `openclaw-exec/`
+Example: modifying `openclaw-clawmate/`
 
 ```bash
 # Step 1: commit and push inside the submodule
-cd openclaw-exec
+cd openclaw-clawmate
 git add .
 git commit -m "feat: your change"
 git push origin <your-branch>
 
 # Step 2: update the submodule pointer in the root repo
 cd ..
-git add openclaw-exec
-git commit -m "chore: bump openclaw-exec submodule"
+git add openclaw-clawmate
+git commit -m "chore: bump openclaw-clawmate submodule"
 git push origin main
 ```
 

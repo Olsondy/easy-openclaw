@@ -1,9 +1,9 @@
 [submodule "openclaw"]
 	path = openclaw
 	url = ../openclaw.git
-[submodule "openclaw-exec"]
-	path = openclaw-exec
-	url = ../openclaw-exec.git
+[submodule "openclaw-clawmate"]
+	path = openclaw-clawmate
+	url = ../openclaw-clawmate.git
 [submodule "openclaw-tenant"]
 	path = openclaw-tenant
 	url = ../openclaw-tenant.git
