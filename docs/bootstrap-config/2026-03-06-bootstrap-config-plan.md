@@ -982,8 +982,8 @@ git commit -m "feat(provision): add tools.exec, GLM-4-Flash preset and feishu pl
 ## Task 9: exec — 类型定义更新
 
 **Files:**
-- Modify: `openclaw-clawmate/src/types/index.ts`
-- Modify: `openclaw-clawmate/src/types/index.test.ts`
+- Modify: `openclaw-mate/src/types/index.ts`
+- Modify: `openclaw-mate/src/types/index.test.ts`
 
 **Step 1: 在 `index.ts` 追加 BootstrapNeeds 并更新 VerifyResponse**
 
@@ -1031,14 +1031,14 @@ it("VerifyResponse 支持 needsBootstrap 字段", () => {
 **Step 3: 运行确认通过**
 
 ```bash
-cd openclaw-clawmate && npm test
+cd openclaw-mate && npm test
 ```
 
 **Step 4: Commit**
 
 ```bash
-git add openclaw-clawmate/src/types/index.ts \
-        openclaw-clawmate/src/types/index.test.ts
+git add openclaw-mate/src/types/index.ts \
+        openclaw-mate/src/types/index.test.ts
 git commit -m "feat(exec): add BootstrapNeeds type to VerifyResponse"
 ```
 
@@ -1047,7 +1047,7 @@ git commit -m "feat(exec): add BootstrapNeeds type to VerifyResponse"
 ## Task 10: exec — bootstrap store
 
 **Files:**
-- Create: `openclaw-clawmate/src/store/bootstrap.store.ts`
+- Create: `openclaw-mate/src/store/bootstrap.store.ts`
 
 **Step 1: 创建 `bootstrap.store.ts`**
 
@@ -1081,8 +1081,8 @@ export { useBootstrapStore } from './bootstrap.store'
 **Step 3: Commit**
 
 ```bash
-git add openclaw-clawmate/src/store/bootstrap.store.ts \
-        openclaw-clawmate/src/store/index.ts
+git add openclaw-mate/src/store/bootstrap.store.ts \
+        openclaw-mate/src/store/index.ts
 git commit -m "feat(exec): add bootstrap Zustand store"
 ```
 
@@ -1091,8 +1091,8 @@ git commit -m "feat(exec): add bootstrap Zustand store"
 ## Task 11: exec — FeishuWizard 组件
 
 **Files:**
-- Create: `openclaw-clawmate/src/components/features/wizard/FeishuWizard.tsx`
-- Create: `openclaw-clawmate/src/components/features/wizard/FeishuWizard.test.tsx`
+- Create: `openclaw-mate/src/components/features/wizard/FeishuWizard.tsx`
+- Create: `openclaw-mate/src/components/features/wizard/FeishuWizard.test.tsx`
 
 **Step 1: 写失败测试**
 
@@ -1132,7 +1132,7 @@ describe('FeishuWizard', () => {
 **Step 2: 运行确认失败**
 
 ```bash
-cd openclaw-clawmate && npm test -- FeishuWizard
+cd openclaw-mate && npm test -- FeishuWizard
 ```
 
 **Step 3: 实现 `FeishuWizard.tsx`**
@@ -1240,14 +1240,14 @@ export function FeishuWizard({ licenseId, authToken, onSuccess, onClose }: Props
 **Step 4: 运行确认通过**
 
 ```bash
-cd openclaw-clawmate && npm test -- FeishuWizard
+cd openclaw-mate && npm test -- FeishuWizard
 ```
 
 **Step 5: Commit**
 
 ```bash
-git add openclaw-clawmate/src/components/features/wizard/FeishuWizard.tsx \
-        openclaw-clawmate/src/components/features/wizard/FeishuWizard.test.tsx
+git add openclaw-mate/src/components/features/wizard/FeishuWizard.tsx \
+        openclaw-mate/src/components/features/wizard/FeishuWizard.test.tsx
 git commit -m "feat(exec): add FeishuWizard component"
 ```
 
@@ -1256,8 +1256,8 @@ git commit -m "feat(exec): add FeishuWizard component"
 ## Task 12: exec — useNodeConnection 接入 needsBootstrap
 
 **Files:**
-- Modify: `openclaw-clawmate/src/hooks/useNodeConnection.ts`
-- Modify: `openclaw-clawmate/src/store/config.store.ts`
+- Modify: `openclaw-mate/src/hooks/useNodeConnection.ts`
+- Modify: `openclaw-mate/src/store/config.store.ts`
 
 **Step 1: config.store.ts 新增 licenseId + authToken + tenantUrl 存储**
 
@@ -1330,7 +1330,7 @@ const { verifyAndConnect } = useNodeConnection()
 **Step 4: 运行全量测试**
 
 ```bash
-cd openclaw-clawmate && npm test
+cd openclaw-mate && npm test
 ```
 
 **Step 5: Lint 检查**
@@ -1342,9 +1342,9 @@ npm run lint
 **Step 6: Commit**
 
 ```bash
-git add openclaw-clawmate/src/hooks/useNodeConnection.ts \
-        openclaw-clawmate/src/store/config.store.ts \
-        openclaw-clawmate/src/App.tsx
+git add openclaw-mate/src/hooks/useNodeConnection.ts \
+        openclaw-mate/src/store/config.store.ts \
+        openclaw-mate/src/App.tsx
 git commit -m "feat(exec): wire needsBootstrap to FeishuWizard on verify"
 ```
 
@@ -1353,7 +1353,7 @@ git commit -m "feat(exec): wire needsBootstrap to FeishuWizard on verify"
 ## Task 13: exec — SettingsPage 飞书配置入口
 
 **Files:**
-- Modify: `openclaw-clawmate/src/pages/SettingsPage.tsx`
+- Modify: `openclaw-mate/src/pages/SettingsPage.tsx`
 
 **Step 1: 在 SettingsPage 审批规则卡片之前插入飞书配置卡片**
 
@@ -1385,13 +1385,13 @@ const { licenseId } = useConfigStore()
 **Step 2: 运行测试 + lint**
 
 ```bash
-cd openclaw-clawmate && npm test && npm run lint
+cd openclaw-mate && npm test && npm run lint
 ```
 
 **Step 3: Commit**
 
 ```bash
-git add openclaw-clawmate/src/pages/SettingsPage.tsx
+git add openclaw-mate/src/pages/SettingsPage.tsx
 git commit -m "feat(exec): add persistent feishu config entry in SettingsPage"
 ```
 
@@ -1423,7 +1423,7 @@ nodeConfig: {
 licenseId: license.id,
 ```
 
-**Step 2: `NodeRuntimeConfig` 类型同步更新**（`openclaw-clawmate/src/types/index.ts`）
+**Step 2: `NodeRuntimeConfig` 类型同步更新**（`openclaw-mate/src/types/index.ts`）
 
 ```typescript
 export interface NodeRuntimeConfig {
@@ -1444,14 +1444,14 @@ export interface NodeRuntimeConfig {
 cd openclaw-tenant && bun run --cwd packages/api test
 
 # exec
-cd openclaw-clawmate && npm test
+cd openclaw-mate && npm test
 ```
 
 **Step 4: Commit**
 
 ```bash
 git add openclaw-tenant/packages/api/src/routes/verify.ts \
-        openclaw-clawmate/src/types/index.ts
+        openclaw-mate/src/types/index.ts
 git commit -m "feat: expose licenseId and tenantUrl in verify response"
 ```
 
@@ -1472,7 +1472,7 @@ bunx biome check
 **Step 2: 运行 exec 全量测试**
 
 ```bash
-cd openclaw-clawmate
+cd openclaw-mate
 npm run check:all
 npm test
 ```

@@ -1,6 +1,6 @@
 # Device Identity 安全加固实施计划
 
-通过引入 ed25519 非对称设备身份，将 openclaw-clawmate 接入 Gateway 的认证从"仅凭 token"升级为"设备私钥签名 + token 双重验证"，同时由 tenant 预写 pairing 文件，保持全程自动化、无需手动 approve。
+通过引入 ed25519 非对称设备身份，将 openclaw-mate 接入 Gateway 的认证从"仅凭 token"升级为"设备私钥签名 + token 双重验证"，同时由 tenant 预写 pairing 文件，保持全程自动化、无需手动 approve。
 
 ## 需用户确认的事项
 
@@ -20,17 +20,17 @@
 
 ## 改动说明
 
-### 模块一：openclaw-clawmate（Rust）
+### 模块一：openclaw-mate（Rust）
 
-#### [MODIFY] [config.rs](../../openclaw-clawmate/src-tauri/src/config.rs)
+#### [MODIFY] [config.rs](../../openclaw-mate/src-tauri/src/config.rs)
 
 扩展 `NodeConfig`，新增三个设备身份字段；新增 `ensure_device_identity()` 函数（首次调用生成 ed25519 密钥对并持久化）。
 
-#### [MODIFY] [auth_client.rs](../../openclaw-clawmate/src-tauri/src/auth_client.rs)
+#### [MODIFY] [auth_client.rs](../../openclaw-mate/src-tauri/src/auth_client.rs)
 
 `AuthRequest` 新增 `public_key: String` 字段，verify 时一并上报。
 
-#### [MODIFY] [ws_client.rs](../../openclaw-clawmate/src-tauri/src/ws_client.rs)
+#### [MODIFY] [ws_client.rs](../../openclaw-mate/src-tauri/src/ws_client.rs)
 
 connect 握手帧新增 `device` 字段：监听 `connect.challenge` 事件获取 nonce，用私钥签名后附加 `{ id, publicKey, signature, signedAt, nonce }`。
 
