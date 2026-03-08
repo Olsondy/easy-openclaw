@@ -164,7 +164,7 @@ openclaw-exec starts, user enters licenseKey
       ✓ First call: bind HWID, activate license
       ↓
   Returns nodeConfig + needsBootstrap:
-      { gatewayUrl, gatewayToken, agentId, licenseId, tenantUrl }
+      { gatewayUrl, gatewayToken, agentId, licenseId }
       { needsBootstrap: { feishu: true/false } }
       ↓
   exec stores nodeConfig in memory (not persisted)
@@ -204,7 +204,7 @@ exec detects needsBootstrap.feishu = true
   → Show FeishuWizard modal (appId + appSecret)
       ↓
   User submits
-  → POST {tenantUrl}/api/licenses/{licenseId}/bootstrap-config
+  → POST {TENANT_API_BASE}/api/licenses/{licenseId}/bootstrap-config
       { licenseKey, hwid, feishu: { appId, appSecret } }
       ↓
   Tenant writes to openclaw.json in container config dir:
@@ -217,6 +217,10 @@ exec detects needsBootstrap.feishu = true
   → Feishu channel active immediately
 
   exec Settings page always shows "飞书配置" entry for reconfiguration
+  exec Settings page also provides a manual "Model API Wizard" entry:
+    POST /api/licenses/{licenseId}/bootstrap-config
+      { licenseKey, hwid, modelAuth: { providerId, providerLabel, baseUrl, api, modelId, modelName, apiKey } }
+    modelAuth writes files only (no tenant DB persistence)
 ```
 
 ### ⑥ gatewayToken Auto-Rotation
@@ -332,7 +336,7 @@ Key variables for `openclaw-tenant` (see `.env.example`):
 | `OPENCLAW_DATA_DIR` | Default data_dir for settings (used only on first-time init) |
 | `OPENCLAW_GATEWAY_PORT_START/END` | Default gateway port range for settings |
 | `OPENCLAW_BASE_DOMAIN` | Default base_domain for settings (enables Nginx subdomain mode) |
-| `TENANT_PUBLIC_URL` | Public URL of this tenant API (e.g. `https://tenant.example.com`) — returned to exec via verify response for bootstrap-config calls |
+| `TENANT_PUBLIC_URL` | Public URL of this tenant API (e.g. `https://tenant.example.com`) — used for admin UI and documentation references |
 | `NGINX_SITE_DIR` / `NGINX_RELOAD_CMD` | Nginx config path and reload command for domain mode |
 
 ### Settings & License Snapshot Strategy

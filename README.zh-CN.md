@@ -156,7 +156,7 @@ easy-openclaw/
 
 ```
 openclaw-exec 桌面端启动，用户输入 licenseKey
-  → [Rust auth_client] POST /api/verify { hwid, licenseKey, deviceName }
+  → [Rust auth_client] POST /api/verify { hwid, licenseKey, deviceName, publicKey }
       ↓
   Tenant API 校验：
       ✓ licenseKey 有效 & 未撤销 & 未过期
@@ -195,7 +195,23 @@ openclaw AI Agent（服务端）
   exec 同时 emit ws:task_result 事件 → React UI 更新任务监控面板
 ```
 
-### ⑤ gatewayToken 自动轮换
+### ⑤ Bootstrap 配置向导（飞书 + 模型 API）
+
+```
+exec 首次 verify 后若 needsBootstrap.feishu=true
+  → 弹出飞书向导，提交 appId/appSecret 到：
+    POST /api/licenses/{licenseId}/bootstrap-config
+    { licenseKey, hwid, feishu: { appId, appSecret } }
+
+exec 设置页另提供“模型 API 配置向导”手动入口：
+  → 提交 modelAuth 到同一接口：
+    { licenseKey, hwid, modelAuth: { providerId, providerLabel, baseUrl, api, modelId, modelName, apiKey } }
+  → tenant 按规则合并 models.json（同 id 替换，不同 id 追加）
+  → 同步更新 openclaw.json 默认主模型并执行 chown + 容器重启
+  → modelAuth 覆盖值仅写文件即时生效，不持久化在 tenant 服务数据库
+```
+
+### ⑥ gatewayToken 自动轮换
 
 ```
 Token 到期（超过 token_ttl_days）后，下次 POST /api/verify 时：
