@@ -26,6 +26,12 @@ The official OpenClaw only supports single-user self-hosting (one instance per m
 | **openclaw-mate** | Client · desktop node | Tauri 2 + React desktop app, connects to the user's dedicated openclaw instance |
 | **openclaw-tenant** | Control plane · admin backend | Hono + Svelte 5, manages Licenses, container orchestration, and authentication |
 
+Subproject repositories:
+
+- `openclaw`: <https://github.com/Olsondy/openclaw>
+- `openclaw-mate`: <https://github.com/Olsondy/openclaw-mate>
+- `openclaw-tenant`: <https://github.com/Olsondy/openclaw-tenant>
+
 ---
 
 ## 📦 Repository Structure
@@ -69,7 +75,7 @@ Each user (License) maps to one isolated openclaw container and one exec desktop
           │                   │                   │
    ┌──────┴──────┐     ┌──────┴──────┐     ┌──────┴──────┐
    │ openclaw-   │     │ openclaw-   │     │ openclaw-   │
-   │ exec User A │     │ exec User B │     │ exec User C │
+   │ mate User A │     │ mate User B │     │ mate User C │
    │ (Desktop)   │     │ (Desktop)   │     │ (Desktop)   │
    └─────────────┘     └─────────────┘     └─────────────┘
          ↑                    ↑                    ↑
@@ -309,17 +315,19 @@ bun run dev:ui     # Terminal 2: Svelte Admin UI (default :5173)
 ```bash
 cd openclaw-mate
 
-# Install frontend dependencies
-npm install
+# Install workspace dependencies (root + sidecar)
+pnpm install
 
 # Dev mode (Vite + Tauri desktop window)
-npm run tauri:dev
+pnpm run tauri:dev
 
 # Production build
-npm run tauri:build
+pnpm run tauri:build
 ```
 
-> Enter the `licenseKey` in the settings page to activate and connect to your dedicated openclaw Gateway.
+> **Cloud mode**: enter the `licenseKey` in Settings → License Key tab to activate and connect to your dedicated Gateway.
+>
+> **Local mode**: with openclaw running locally, use Settings → 本地 OpenClaw tab for zero-config auto-connection.
 
 ---
 
@@ -358,52 +366,24 @@ Key variables for `openclaw-tenant` (see `.env.example`):
 
 ---
 
-## 🔧 Git Submodule Workflow
+## 🔧 Workspace Repo Strategy
 
-This repository uses a **superproject + submodules** structure:
-
-- `openclaw/`
-- `openclaw-mate/`
-- `openclaw-tenant/`
+This workspace does **not** track child projects with Git submodules.
+The root repository is only an orchestration/documentation layer.
 
 ### Initial Clone
 
 ```bash
-git clone --recurse-submodules <easy-openclaw-repo-url>
+git clone <easy-openclaw-repo-url>
+cd easy-openclaw
+
+# Clone child repositories into the workspace root
+git clone <openclaw-repo-url> openclaw
+git clone <openclaw-mate-repo-url> openclaw-mate
+git clone <openclaw-tenant-repo-url> openclaw-tenant
 ```
 
-If you already cloned the root repo:
-
-```bash
-git submodule update --init --recursive
-```
-
-### Committing Changes to a Submodule
-
-Example: modifying `openclaw-mate/`
-
-```bash
-# Step 1: commit and push inside the submodule
-cd openclaw-mate
-git add .
-git commit -m "feat: your change"
-git push origin <your-branch>
-
-# Step 2: update the submodule pointer in the root repo
-cd ..
-git add openclaw-mate
-git commit -m "chore: bump openclaw-mate submodule"
-git push origin main
-```
-
-> Always push the submodule **before** pushing the root repo. The root repo stores a commit SHA pointer, not the source code itself.
-
-### Pull Latest Submodule Content
-
-```bash
-git pull
-git submodule update --init --recursive
-```
+Use the repository URLs from the "Subproject repositories" list above.
 
 ---
 

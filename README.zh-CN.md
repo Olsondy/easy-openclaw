@@ -24,6 +24,12 @@
 | **openclaw-mate** | 客户端 · 桌面节点 | Tauri 2 + React 桌面应用，连接用户专属的 openclaw 实例 |
 | **openclaw-tenant** | 控制平面 · 管理后台 | Hono + Svelte 5，负责 License 管理、Docker 编排与授权鉴权 |
 
+子项目仓库地址：
+
+- `openclaw`: <https://github.com/Olsondy/openclaw>
+- `openclaw-mate`: <https://github.com/Olsondy/openclaw-mate>
+- `openclaw-tenant`: <https://github.com/Olsondy/openclaw-tenant>
+
 ---
 
 ## 📦 项目结构
@@ -343,56 +349,24 @@ openclaw-tenant 关键环境变量（参见 `.env.example`）：
 
 ---
 
-## 🔧 Git Submodule 工作流
+## 🔧 工作空间仓库策略
 
-本仓库是 **superproject + submodule** 结构：
-
-- `openclaw/`
-- `openclaw-mate/`
-- `openclaw-tenant/`
+当前工作空间 **不再使用 Git submodule** 跟踪子项目。
+根仓库只负责编排与文档，不提交子项目源码。
 
 ### 1. 首次拉取
 
 ```bash
-git clone --recurse-submodules <easy-openclaw-repo-url>
+git clone <easy-openclaw-repo-url>
+cd easy-openclaw
+
+# 在工作区根目录单独拉取子项目
+git clone <openclaw-repo-url> openclaw
+git clone <openclaw-mate-repo-url> openclaw-mate
+git clone <openclaw-tenant-repo-url> openclaw-tenant
 ```
 
-如果已经 clone 过根仓库，再执行：
-
-```bash
-git submodule update --init --recursive
-```
-
-### 2. 修改子模块后的提交流程（必须按顺序）
-
-示例：你修改了 `openclaw-mate/`
-
-```bash
-# Step 1: 在子模块内提交并推送代码
-cd openclaw-mate
-git add .
-git commit -m "feat: your change"
-git push origin <your-branch>
-
-# Step 2: 回到根仓库，提交“子模块指针”更新
-cd ..
-git add openclaw-mate
-git commit -m "chore: bump openclaw-mate submodule"
-git push origin main
-```
-
-### 3. 重要注意事项
-
-1. 先推送子模块，再推送根仓库。否则别人拉根仓库时可能找不到对应子模块 commit。
-2. 根仓库提交的是子模块 commit SHA（指针），不是子模块源码。
-3. 只有修改了子模块 URL 或路径时，才需要提交 `.gitmodules`。
-
-### 4. 更新到最新子模块内容
-
-```bash
-git pull
-git submodule update --init --recursive
-```
+子项目地址请使用上面的“子项目仓库地址”列表。
 
 ---
 

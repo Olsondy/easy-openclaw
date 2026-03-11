@@ -1,9 +1,0 @@
-[submodule "openclaw"]
-	path = openclaw
-	url = ../openclaw.git
-[submodule "openclaw-mate"]
-	path = openclaw-mate
-	url = ../openclaw-mate.git
-[submodule "openclaw-tenant"]
-	path = openclaw-tenant
-	url = ../openclaw-tenant.git
