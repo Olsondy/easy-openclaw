@@ -22,7 +22,7 @@ The official OpenClaw only supports single-user self-hosting (one instance per m
 
 | Component | Role | Description |
 |-----------|------|-------------|
-| **openclaw** | Data plane · tenant instance | Official open-source self-hosted gateway, one Docker/Podman container per user |
+| **openclaw** | Data plane · isolated runtime instance | Official open-source self-hosted gateway, one Docker/Podman container per user |
 | **openclaw-mate** | Client · desktop node | Tauri 2 + React desktop app, connects to the user's dedicated openclaw instance |
 | **openclaw-tenant** | Control plane · admin backend | Hono + Svelte 5, manages Licenses, container orchestration, and authentication |
 
@@ -88,7 +88,7 @@ Each user (License) maps to one isolated openclaw container and one exec desktop
 
 ---
 
-### Service Architecture (Single Tenant View)
+### Service Architecture (Single Instance View)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -257,7 +257,7 @@ After token expires (> token_ttl_days), on next POST /api/verify:
 - **License management**: create, revoke, set expiry and token rotation period
 - **HWID device binding**: locks to a physical device on first activation
 - **Container orchestration**: async Docker/Podman provisioning, tracks `pending → running → ready → failed`
-- **Baseline config pre-seeding**: provision script writes gateway, tools, models, agents, commands defaults into `openclaw.json` — no interactive wizard needed
+- **Baseline config pre-seeding**: the provisioning pipeline invokes the runtime provision script to write gateway, tools, models, agents, and commands defaults into `openclaw.json` — no interactive wizard needed
 - **Model API key injection**: `model_presets` table stores AES-256-GCM encrypted API keys; injected into `openclaw.json` after provisioning
 - **Bootstrap config API**: exec wizard submits Feishu credentials via `POST /api/licenses/:id/bootstrap-config`; written to container config and hot-reloaded
 - **Runtime auto-detection**: detects Docker or Podman via socket file at startup
